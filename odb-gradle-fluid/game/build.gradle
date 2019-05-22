@@ -1,0 +1,103 @@
+apply plugin: "java"
+apply plugin: "artemis"
+apply plugin: "artemis-fluid"
+
+ext {
+    fluidOutputDir = file("$buildDir/generated-sources/fluid/")
+}
+
+sourceCompatibility = 1.8
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+sourceSets.main.java.srcDirs = ["src/", fluidOutputDir]
+sourceSets.test.java.srcDirs = ["test/"]
+eclipse.project {
+    name = appName + "-core"
+}
+
+project.ext.mainClassName = "my.game.GameLauncher"
+
+task run(dependsOn: classes, type: JavaExec) {
+    main = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    ignoreExitValue = true
+}
+
+
+test {
+    useJUnitPlatform()
+    failFast = true
+
+    testLogging {
+        // set options for log level LIFECYCLE
+        events "failed"
+        exceptionFormat "short"
+
+        // set options for log level DEBUG
+        debug {
+            events "started", "skipped", "failed"
+            exceptionFormat "full"
+        }
+
+        // remove standard output/error logging from --info builds
+        // by assigning only 'failed' and 'skipped' events
+        info.events = ["failed", "skipped"]
+    }
+}
+
+// artemis-odb: weaving settings.
+weave {
+    enableArtemisPlugin = true
+    enablePooledWeaving = true
+    optimizeEntitySystems = true
+    classesDir = sourceSets.main.java.outputDir
+}
+
+fluid {
+    logging.captureStandardOutput LogLevel.INFO
+    generatedSourcesDirectory = fluidOutputDir
+    classpath = sourceSets.main.compileClasspath
+    preferences.excludeFromClasspath += [
+            // speed up compilation by skipping dependencies without components.
+            "guava-",
+            "reflections-",
+            "commons-lang3-",
+            "javapoet-",
+            "fast-classpath-scanner-",
+            "commons-io-",
+            "javassist-",
+// Regexp matching will be usable after artemis-odb 2.3.0 gets released.
+//            ".*guava-([^/]+)/?jar\$",
+//            ".*reflections-([^/]+)/?jar\$",
+//            ".*artemis-odb-([^/]+)/?jar\$",
+//            ".*commons-lang3-([^/]+)/?jar\$",
+//            ".*javapoet-([^/]+)/?jar\$",
+//            ".*fast-classpath-scanner-([^/]+)/?jar\$",
+//            ".*commons-io-([^/]+)/?jar\$",
+//            ".*javassist-([^/]+)/?jar\$",
+    ]
+
+    // optional parameters. Uncomment to activate.
+    // preferences.prefixComponentGetter = "get" // prefix for Pos E::[get]pos()
+    // preferences.prefixComponentCreate = "" // prefix for E E::[]pos()
+    // preferences.prefixComponentHas = "has" // prefix for boolean E::[has]Pos()
+    // preferences.prefixComponentRemove = "remove" // prefix for E E::[remove]Pos()
+    // preferences.generateTagMethods = true // add tag convenience methods to E.
+    // preferences.generateGroupMethods = true // add group convenience methods to E.
+    // preferences.generateBooleanComponentAccessors = true // Generate boolean accessors for flag components?
+    // preferences.swallowGettersWithParameters = false // global setting. overridden by @Fluid annotation.
+}
+compileJava.dependsOn fluid
+classes.finalizedBy weave
+
+idea.module {
+    generatedSourceDirs += fluidOutputDir
+    excludeDirs -= file("$buildDir")
+    excludeDirs += file("$buildDir/classes")
+    excludeDirs += file("$buildDir/dependency-cache")
+    excludeDirs += file("$buildDir/libs")
+    excludeDirs += file("$buildDir/tmp")
+}
+
+dependencies {
+}

@@ -1,0 +1,79 @@
+buildscript {
+
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        jcenter()
+        google()
+    }
+    dependencies {
+        // lib for artemis-odb weaving.
+        // see https://github.com/junkdog/artemis-odb/wiki/Bytecode-weaving
+        classpath "net.onedaybeard.artemis:artemis-odb-gradle-plugin:2.2.0"
+        // lib for artemis-odb fluid.
+        classpath "net.onedaybeard.artemis:artemis-fluid-gradle-plugin:2.2.0"
+    }
+}
+
+allprojects {
+    apply plugin: "eclipse"
+    apply plugin: "idea"
+
+    version = '1.0'
+    ext {
+        appName = "my-game"
+        artemisVersion = '2.2.0' // update gradle plugins above as well!
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        google()
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+    }
+}
+
+
+// For systems and other game logic.
+project(":game") {
+    apply plugin: "java"
+
+    configurations {
+        provided
+    }
+
+    sourceSets {
+        // run the annotation processor compile time.
+        main {
+            compileClasspath += configurations.provided
+        }
+    }
+
+    dependencies {
+        compile project(":components")
+        compile "net.onedaybeard.artemis:artemis-odb:$artemisVersion"
+        compileOnly "net.onedaybeard.artemis:artemis-fluid-core:$artemisVersion"
+
+        // For tests.
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+    }
+}
+
+// For components.
+project(":components") {
+    apply plugin: "java"
+
+    dependencies {
+        compile "net.onedaybeard.artemis:artemis-odb:$artemisVersion"
+    }
+}
+
+tasks.eclipse.doLast {
+    delete ".project"
+}
