@@ -1,0 +1,59 @@
+apply plugin: "java"
+apply plugin: "artemis"
+
+sourceCompatibility = 1.8
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+sourceSets.main.java.srcDirs = ["src/"]
+sourceSets.test.java.srcDirs = ["test/"]
+eclipse.project {
+    name = appName + "-core"
+}
+
+project.ext.mainClassName = "my.game.GameLauncher"
+
+task run(dependsOn: classes, type: JavaExec) {
+    main = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    ignoreExitValue = true
+}
+
+
+test {
+    useJUnitPlatform()
+    failFast = true
+
+    testLogging {
+        // set options for log level LIFECYCLE
+        events "failed"
+        exceptionFormat "short"
+
+        // set options for log level DEBUG
+        debug {
+            events "started", "skipped", "failed"
+            exceptionFormat "full"
+        }
+
+        // remove standard output/error logging from --info builds
+        // by assigning only 'failed' and 'skipped' events
+        info.events = ["failed", "skipped"]
+    }
+}
+
+// artemis-odb: weaving settings.
+weave {
+    enableArtemisPlugin = true
+    enablePooledWeaving = true
+    optimizeEntitySystems = true
+    classesDir = sourceSets.main.java.outputDir
+}
+
+classes.finalizedBy weave
+
+idea.module {
+    excludeDirs -= file("$buildDir")
+    excludeDirs += file("$buildDir/classes")
+    excludeDirs += file("$buildDir/dependency-cache")
+    excludeDirs += file("$buildDir/libs")
+    excludeDirs += file("$buildDir/tmp")
+}
